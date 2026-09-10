@@ -73,7 +73,7 @@ public class Pride extends JavaPlugin {
     /**
      * Removes the Companion Mark from a player
      */
-    public void unblessi(Player player) {
+    public void unbless(Player player) {
         PersistentDataContainer pdc = player.getPersistentDataContainer();
         pdc.remove(COMPANION_KEY);
         
