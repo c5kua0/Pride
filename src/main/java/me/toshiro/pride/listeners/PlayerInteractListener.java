@@ -71,12 +71,21 @@ public class PlayerInteractListener implements Listener {
         Vector direction = eyeLocation.getDirection().normalize();
         Location blastLocation = eyeLocation.clone();
 
+        // Show casting effect at player
+        for (int i = 0; i < 10; i++) {
+            double angle = (Math.PI * 2 / 10) * i;
+            Vector particleDir = new Vector(Math.cos(angle), 0.2, Math.sin(angle)).normalize();
+            Location particleLoc = player.getLocation().add(0, 1.5, 0).add(particleDir.multiply(0.5));
+            player.getWorld().spawnParticle(Particle.SPELL, particleLoc, 2);
+        }
+
         // Damage entities in the blast path
         for (int i = 0; i < 5; i++) {
             blastLocation.add(direction.clone().multiply(0.5));
             
-            // Show particle effect
-            player.getWorld().spawnParticle(Particle.SPELL, blastLocation, 5);
+            // Show particle effect - blue spell particles
+            player.getWorld().spawnParticle(Particle.SPELL, blastLocation, 8);
+            player.getWorld().spawnParticle(Particle.SPELL_MOB, blastLocation, 5, 0.2, 0.2, 0.2);
             
             // Check for entities hit
             for (LivingEntity entity : player.getWorld().getNearbyLivingEntities(blastLocation, 1.0)) {
@@ -95,6 +104,10 @@ public class PlayerInteractListener implements Listener {
 
                 // Apply damage
                 entity.damage(4.0, player);
+                
+                // Show hit effect
+                player.getWorld().spawnParticle(Particle.CRIT, entity.getLocation(), 10);
+                player.getWorld().spawnParticle(Particle.SPELL_WITCH, entity.getLocation(), 5);
                 
                 // Knockback
                 Vector knockback = entity.getLocation().toVector().subtract(blastLocation.toVector()).normalize().multiply(0.3);
@@ -130,6 +143,15 @@ public class PlayerInteractListener implements Listener {
 
         int healed = 0;
 
+        // Show casting effect - spiraling particles
+        for (int i = 0; i < 20; i++) {
+            double angle = (Math.PI * 2 / 20) * i;
+            Vector direction = new Vector(Math.cos(angle), 0.5, Math.sin(angle)).normalize();
+            Location spawnLoc = center.clone().add(direction.multiply(1.5));
+            player.getWorld().spawnParticle(Particle.GLOW, spawnLoc, 3);
+            player.getWorld().spawnParticle(Particle.SPELL_MOB, spawnLoc, 2, 0.3, 0.3, 0.3);
+        }
+
         for (LivingEntity entity : player.getWorld().getNearbyLivingEntities(center, radius)) {
             if (!(entity instanceof Player)) continue;
             
@@ -145,16 +167,22 @@ public class PlayerInteractListener implements Listener {
             targetPlayer.setHealth(Math.min(targetPlayer.getHealth() + 16.0, maxHealth)); // Heal 8 hearts
             targetPlayer.sendMessage(ChatColor.GREEN + "You have been healed by the Archbishop's Massive Healing!");
 
+            // Show healing effect on healed player
+            player.getWorld().spawnParticle(Particle.HEART, targetPlayer.getLocation().add(0, 1, 0), 15);
+            player.getWorld().spawnParticle(Particle.GLOW, targetPlayer.getLocation().add(0, 1, 0), 8);
+            player.getWorld().spawnParticle(Particle.SPELL_MOB, targetPlayer.getLocation().add(0, 1, 0), 10, 0.3, 0.3, 0.3);
+
             healed++;
         }
 
-        // Visual effect - green healing particles around center
+        // Visual effect - green healing particles around center in circle
         for (int i = 0; i < 32; i++) {
             double angle = (Math.PI * 2 / 32) * i;
             Vector direction = new Vector(Math.cos(angle), 0.3, Math.sin(angle)).normalize();
             
             Location spawnLoc = center.clone().add(direction.multiply(2.0));
             player.getWorld().spawnParticle(Particle.HEART, spawnLoc, 3);
+            player.getWorld().spawnParticle(Particle.GLOW, spawnLoc, 2);
         }
 
         // Update cooldown
