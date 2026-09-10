@@ -9,9 +9,9 @@ commands:
     description: Archbishop's Companion management
     usage: /pride <bless|unbless|reload> [player]
     permission: pride.admin
-    permission-message: You do not have permission to use this command!
+    permission-message: Only the Archbishop can use this command!
 
 permissions:
   pride.admin:
     description: Allows use of Pride admin commands
-    default: op
+    default: false
