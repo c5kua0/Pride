@@ -21,7 +21,7 @@ public class PlayerInteractListener implements Listener {
 
     private Pride plugin;
     private Map<UUID, Long> archbishopMagicCooldown = new HashMap<>();
-    private Map<UUID, Long> sacredBurstCooldown = new HashMap<>();
+    private Map<UUID, Long> massiveHealingCooldown = new HashMap<>();
 
     public PlayerInteractListener(Pride plugin) {
         this.plugin = plugin;
@@ -37,10 +37,10 @@ public class PlayerInteractListener implements Listener {
             return;
         }
 
-        // Check if player is sneaking (Sacred Burst)
+        // Check if player is sneaking (Massive Healing)
         if (player.isSneaking() && (event.getAction().toString().contains("RIGHT"))) {
             event.setCancelled(true);
-            useSacredBurst(player);
+            useMassiveHealing(player);
             return;
         }
 
@@ -109,63 +109,58 @@ public class PlayerInteractListener implements Listener {
         player.sendMessage(ChatColor.BLUE + "Archbishop's Magic Blast cast!");
     }
 
-    private void useSacredBurst(Player player) {
+    private void useMassiveHealing(Player player) {
         UUID playerUUID = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
-        long cooldownTime = 15000; // 15 seconds
+        long cooldownTime = 20000; // 20 seconds
 
         // Check cooldown
-        if (sacredBurstCooldown.containsKey(playerUUID)) {
-            long lastUse = sacredBurstCooldown.get(playerUUID);
+        if (massiveHealingCooldown.containsKey(playerUUID)) {
+            long lastUse = massiveHealingCooldown.get(playerUUID);
             if (currentTime - lastUse < cooldownTime) {
                 long remainingTime = (cooldownTime - (currentTime - lastUse)) / 1000;
-                player.sendMessage(ChatColor.YELLOW + "Sacred Burst is on cooldown for " + remainingTime + " more seconds.");
+                player.sendMessage(ChatColor.YELLOW + "Massive Healing is on cooldown for " + remainingTime + " more seconds.");
                 return;
             }
         }
 
-        // Create burst effect
+        // Create healing effect
         Location center = player.getLocation().add(0, 1, 0);
-        double radius = 4.0;
+        double radius = 6.0;
+
+        int healed = 0;
 
         for (LivingEntity entity : player.getWorld().getNearbyLivingEntities(center, radius)) {
-            if (entity == player) continue;
-            if (entity instanceof Player) {
-                Player targetPlayer = (Player) entity;
-                // Don't damage Archbishop or other Companions
-                if (targetPlayer.getName().equals(Pride.ARCHBISHOP) || plugin.isCompanion(targetPlayer)) {
-                    continue;
-                }
+            if (!(entity instanceof Player)) continue;
+            
+            Player targetPlayer = (Player) entity;
+
+            // Only heal Archbishop and Companions
+            if (!targetPlayer.getName().equals(Pride.ARCHBISHOP) && !plugin.isCompanion(targetPlayer)) {
+                continue;
             }
 
-            // Only damage hostile mobs
-            if (!isHostileMob(entity)) continue;
+            // Heal the player
+            double maxHealth = targetPlayer.getMaxHealth();
+            targetPlayer.setHealth(Math.min(targetPlayer.getHealth() + 16.0, maxHealth)); // Heal 8 hearts
+            targetPlayer.sendMessage(ChatColor.GREEN + "You have been healed by the Archbishop's Massive Healing!");
 
-            // Apply damage
-            entity.damage(8.0, player);
-
-            // Knock back
-            Vector knockback = entity.getLocation().toVector().subtract(center.toVector()).normalize().multiply(0.5);
-            knockback.setY(0.2);
-            entity.setVelocity(entity.getVelocity().add(knockback));
-
-            // Ignite
-            entity.setFireTicks(60);
+            healed++;
         }
 
-        // Visual effect - magic particles around player
-        for (int i = 0; i < 16; i++) {
-            double angle = (Math.PI * 2 / 16) * i;
+        // Visual effect - green healing particles around center
+        for (int i = 0; i < 32; i++) {
+            double angle = (Math.PI * 2 / 32) * i;
             Vector direction = new Vector(Math.cos(angle), 0.3, Math.sin(angle)).normalize();
             
-            Location spawnLoc = center.clone().add(direction.multiply(1.5));
-            player.getWorld().spawnParticle(Particle.SPELL_MOB, spawnLoc, 3);
+            Location spawnLoc = center.clone().add(direction.multiply(2.0));
+            player.getWorld().spawnParticle(Particle.HEART, spawnLoc, 3);
         }
 
         // Update cooldown
-        sacredBurstCooldown.put(playerUUID, currentTime);
+        massiveHealingCooldown.put(playerUUID, currentTime);
 
-        player.sendMessage(ChatColor.GOLD + "Sacred Burst unleashed!");
+        player.sendMessage(ChatColor.GREEN + "Massive Healing cast! Healed " + healed + " Companion(s)!");
     }
 
     private boolean isHostileMob(LivingEntity entity) {
