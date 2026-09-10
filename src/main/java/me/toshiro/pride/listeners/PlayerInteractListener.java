@@ -2,7 +2,7 @@ package me.toshiro.pride.listeners;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
-import org.bukkit.entity.Fireball;
+import org.bukkit.Particle;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -20,7 +20,7 @@ import java.util.UUID;
 public class PlayerInteractListener implements Listener {
 
     private Pride plugin;
-    private Map<UUID, Long> archbishopFireCooldown = new HashMap<>();
+    private Map<UUID, Long> archbishopMagicCooldown = new HashMap<>();
     private Map<UUID, Long> sacredBurstCooldown = new HashMap<>();
 
     public PlayerInteractListener(Pride plugin) {
@@ -44,41 +44,69 @@ public class PlayerInteractListener implements Listener {
             return;
         }
 
-        // Check for Archbishop's Fire (right-click)
+        // Check for Archbishop's Magic Blast (right-click)
         if (event.getAction().toString().contains("RIGHT")) {
             event.setCancelled(true);
-            useArchbishopsFire(player);
+            useArchbishopsMagicBlast(player);
         }
     }
 
-    private void useArchbishopsFire(Player player) {
+    private void useArchbishopsMagicBlast(Player player) {
         UUID playerUUID = player.getUniqueId();
         long currentTime = System.currentTimeMillis();
         long cooldownTime = 5000; // 5 seconds
 
         // Check cooldown
-        if (archbishopFireCooldown.containsKey(playerUUID)) {
-            long lastUse = archbishopFireCooldown.get(playerUUID);
+        if (archbishopMagicCooldown.containsKey(playerUUID)) {
+            long lastUse = archbishopMagicCooldown.get(playerUUID);
             if (currentTime - lastUse < cooldownTime) {
                 long remainingTime = (cooldownTime - (currentTime - lastUse)) / 1000;
-                player.sendMessage(ChatColor.YELLOW + "Archbishop's Fire is on cooldown for " + remainingTime + " more seconds.");
+                player.sendMessage(ChatColor.YELLOW + "Archbishop's Magic Blast is on cooldown for " + remainingTime + " more seconds.");
                 return;
             }
         }
 
-        // Cast fireball
+        // Create magic blast effect
         Location eyeLocation = player.getEyeLocation();
         Vector direction = eyeLocation.getDirection().normalize();
+        Location blastLocation = eyeLocation.clone();
 
-        Fireball fireball = player.getWorld().spawn(eyeLocation.add(direction.multiply(1.5)), Fireball.class);
-        fireball.setShooter(player);
-        fireball.setVelocity(direction.multiply(1.5));
-        fireball.setIsIncendiary(true);
+        // Damage entities in the blast path
+        for (int i = 0; i < 5; i++) {
+            blastLocation.add(direction.clone().multiply(0.5));
+            
+            // Show particle effect
+            player.getWorld().spawnParticle(Particle.SPELL, blastLocation, 5);
+            
+            // Check for entities hit
+            for (LivingEntity entity : player.getWorld().getNearbyLivingEntities(blastLocation, 1.0)) {
+                if (entity == player) continue;
+                
+                if (entity instanceof Player) {
+                    Player targetPlayer = (Player) entity;
+                    // Don't damage Archbishop or other Companions
+                    if (targetPlayer.getName().equals(Pride.ARCHBISHOP) || plugin.isCompanion(targetPlayer)) {
+                        continue;
+                    }
+                }
+
+                // Only damage hostile mobs
+                if (!isHostileMob(entity)) continue;
+
+                // Apply damage
+                entity.damage(4.0, player);
+                
+                // Knockback
+                Vector knockback = entity.getLocation().toVector().subtract(blastLocation.toVector()).normalize().multiply(0.3);
+                knockback.setY(0.1);
+                entity.setVelocity(entity.getVelocity().add(knockback));
+            }
+        }
 
         // Update cooldown
-        archbishopFireCooldown.put(playerUUID, currentTime);
+        archbishopMagicCooldown.put(playerUUID, currentTime);
 
-        player.sendMessage(ChatColor.GOLD + "Archbishop's Fire cast!");
+        player.sendMessage(ChatColor.BLUE + "Archbishop's Magic Blast cast!");
     }
 
     private void useSacredBurst(Player player) {
@@ -125,16 +153,13 @@ public class PlayerInteractListener implements Listener {
             entity.setFireTicks(60);
         }
 
-        // Visual effect - spawn fireballs around player
-        for (int i = 0; i < 8; i++) {
-            double angle = (Math.PI * 2 / 8) * i;
-            Vector direction = new Vector(Math.cos(angle), 0, Math.sin(angle)).normalize();
+        // Visual effect - magic particles around player
+        for (int i = 0; i < 16; i++) {
+            double angle = (Math.PI * 2 / 16) * i;
+            Vector direction = new Vector(Math.cos(angle), 0.3, Math.sin(angle)).normalize();
             
             Location spawnLoc = center.clone().add(direction.multiply(1.5));
-            Fireball fb = player.getWorld().spawn(spawnLoc, Fireball.class);
-            fb.setShooter(player);
-            fb.setVelocity(direction.multiply(0.5));
-            fb.setIsIncendiary(true);
+            player.getWorld().spawnParticle(Particle.SPELL_MOB, spawnLoc, 3);
         }
 
         // Update cooldown
