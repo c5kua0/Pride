@@ -95,7 +95,7 @@ public class PrideCommand implements CommandExecutor {
             return true;
         }
 
-        plugin.unblessi(target);
+        plugin.unbless(target);
         player.sendMessage(ChatColor.GREEN + "Removed Companion Mark from " + target.getName() + "!");
         return true;
     }
